@@ -22,14 +22,14 @@ class Game extends ApplicationAdapter {
   var accumulatedTime = 0L
   
   val inputMultiplexer = new InputMultiplexer
-  var gfxResources: GraphicsResources = _
+  var renderer: BasicRenderer = _
   
   var currentState: GameState = _
   
   override def create() = {
     lastFrameTime = TimeUtils.nanoTime()
     
-    gfxResources = new GraphicsResources
+    renderer = new BasicRenderer(new GraphicsResources)
     
     Gdx.input.setInputProcessor(inputMultiplexer)
     inputMultiplexer.addProcessor(new InputAdapter() {
@@ -41,7 +41,7 @@ class Game extends ApplicationAdapter {
       }
     })
         
-    currentState = new PlayGameState(gfxResources)
+    currentState = new PlayGameState(renderer)
   }
 
   override def render() = {
@@ -69,12 +69,12 @@ class Game extends ApplicationAdapter {
       simulatedDt += FixedTimestep
     }
     
-    gfxResources.beginFrame()
+    renderer.beginFrame()
     currentState.render(simulatedDt)
-    gfxResources.endFrame()
+    renderer.endFrame()
   }
   
   override def dispose() = {
-    gfxResources.dispose()
+    renderer.dispose()
   }
 }

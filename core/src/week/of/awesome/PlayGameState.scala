@@ -10,8 +10,11 @@ import com.badlogic.gdx.graphics.GL20
 /**
  * @author David
  */
-class PlayGameState(gfx: GraphicsResources) extends GameState {
-  val img = gfx.newTexture("badlogic.jpg")
+class PlayGameState(gfx: BasicRenderer) extends GameState {
+  val img = gfx.resources.newTexture("badlogic.jpg")
+  
+  val world = new World(
+        TileMap.loadLevel("worldmap.txt"))
   
   def onEnter(): InputProcessor = {
     return new InputAdapter()
