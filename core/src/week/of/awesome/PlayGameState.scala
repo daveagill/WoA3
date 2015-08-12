@@ -10,25 +10,21 @@ import com.badlogic.gdx.graphics.GL20
 /**
  * @author David
  */
-class PlayGameState(gfx: BasicRenderer) extends GameState {
-  val img = gfx.resources.newTexture("badlogic.jpg")
+class PlayGameState(basicRenderer: BasicRenderer) extends GameState {
+  val renderer = new WorldRenderer(basicRenderer)
   
   val world = new World(
         TileMap.loadLevel("worldmap.txt"))
   
-  def onEnter(): InputProcessor = {
-    return new InputAdapter()
-  }
-
-  def onExit(): Unit = {
-    
+  override def onEnter() = {
+    basicRenderer.setBackgroundColour(1, 1, 1, 1)
   }
 
   def update(dt: Float): Option[GameState] = {
     return None
   }
   
-  def render(dt: Float): Unit = {
-    gfx.batch.draw(img, 0, 0)
+  def render(dt: Float) = {
+    renderer.drawWorld(world)
   }
 }

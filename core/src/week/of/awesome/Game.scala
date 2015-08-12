@@ -40,8 +40,14 @@ class Game extends ApplicationAdapter {
         return false
       }
     })
-        
-    currentState = new PlayGameState(renderer)
+    
+    
+    val playGameState = new PlayGameState(renderer)
+    val splashScreenState = new SplashScreenState(renderer, playGameState)
+    
+    currentState = splashScreenState
+    currentState.onEnter()
+    inputMultiplexer.addProcessor(0, currentState.getInputProcessor())
   }
 
   override def render() = {
@@ -57,11 +63,11 @@ class Game extends ApplicationAdapter {
       // if the game-state has changed then tear down the old state and setup the new one
       if (nextState ne currentState) {
         currentState.onExit()
-        val inputProcessor = nextState.onEnter()
+        nextState.onEnter()
         
         // install the input processor
         inputMultiplexer.removeProcessor(0)
-        inputMultiplexer.addProcessor(inputProcessor)
+        inputMultiplexer.addProcessor(0, nextState.getInputProcessor())
       }
       currentState = nextState
       
@@ -72,6 +78,10 @@ class Game extends ApplicationAdapter {
     renderer.beginFrame()
     currentState.render(simulatedDt)
     renderer.endFrame()
+  }
+  
+  override def resize(width: Int, height: Int) = {
+    renderer.resizeViewport(width, height)
   }
   
   override def dispose() = {

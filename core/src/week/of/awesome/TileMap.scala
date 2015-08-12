@@ -4,7 +4,7 @@ import com.badlogic.gdx.Gdx
 import scala.collection.breakOut
 
 
-class TileMap(tiles: Vector[Vector[Tiles.Tile]])
+class TileMap(val tiles: Vector[Vector[Tiles.Tile]])
 
 object TileMap {
   def loadLevel(path: String): TileMap = {
