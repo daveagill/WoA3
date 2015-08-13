@@ -1,2 +1,6 @@
-   /\   xx
-x xxxxxxxxxx x
+    /x\  x
+   /xxxx x\   /\
+x   xxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+x  x
+x  x
+xxxx

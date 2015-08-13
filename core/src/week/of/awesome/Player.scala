@@ -6,15 +6,17 @@ import com.badlogic.gdx.math.Vector2
  * @author David
  */
 object Player {
-  val CollisionThreshold = 0.1f
+  val Width = 0.8f;
   val StepThreshold = 0.5f
+  val HorizontalSpeed = 2f
   val JumpSpeed = 11f
   val Gravity = 40f
 }
 
 class Player(
     startPosition: Vector2,
-    mapEval: (Int, Int) => Tiles.Tile) {
+    mapEval: (Int, Int) => Tiles.Tile,
+    mapEval2: (Int, Int, Float, Float) => Float) {
   
   import Player._
   
@@ -22,14 +24,29 @@ class Player(
   
   private var movingRight = false
   private var movingLeft = false
+  private var isJumping = false
   private var verticalVelocity = 0f
+  private var isGrounded = false
+  
+  class MapData(position: Vector2) {
+    val (leftX, midX, rightX) = (position.x+0.5f-Width/2f, position.x+0.5f, position.x+0.5f+Width/2f)
+    val (mapLeftX, mapMidX, mapRightX) = (leftX.intValue, midX.intValue, if (rightX.isWhole()) rightX.intValue-1 else rightX.intValue())
+    val (mapFloorY, mapY) = ((position.y-0.5f).intValue, (position.y+0.5f).intValue)
+    
+    // xPercents for left/mid/right tiles
+    val leftXPercent = leftX - mapLeftX
+    val midXPercent = midX - mapMidX
+    val rightXPercent = rightX - rightX.intValue
+  }
   
   def update(dt: Float) = {
     // apply gravity
     verticalVelocity -= (Gravity * dt)
     
+    // apply jumping velocity
+    verticalVelocity = if (isGrounded && isJumping) JumpSpeed else verticalVelocity
+    
     val velocity = {
-      val HorizontalSpeed = 5f
       val rightSpeed = if (movingRight) HorizontalSpeed else 0f
       val leftSpeed = if (movingLeft) HorizontalSpeed else 0f
       new Vector2(rightSpeed - leftSpeed, verticalVelocity)
@@ -37,66 +54,87 @@ class Player(
     
     val oldPosition = position.cpy
     position.add(velocity.scl(dt))
-
-    // query for surrounding tiles
-    val (leftX, midX, rightX) = (position.x+CollisionThreshold, position.x+0.5f, position.x+1-CollisionThreshold)
-    val (mapLeftX, mapMidX, mapRightX) = (leftX.intValue, midX.intValue, rightX.intValue)
-    val (mapFloorY, mapWallY) = ((position.y-0.5f).intValue, (position.y+0.5f).intValue)
-    val leftFloorTile = mapEval(mapLeftX, mapFloorY)
     
-    val rightFloorTile = mapEval(mapRightX, mapFloorY)
-    val leftWallTile = mapEval(mapLeftX, mapWallY)
-    val rightWallTile = mapEval(mapRightX, mapWallY)
-    val lowRoadTile = mapEval(mapMidX, mapFloorY)
-    val highRoadTile = mapEval(mapMidX, mapWallY)
-    
-    // work out xPercent for left/right tiles
-    val leftXPercent = leftX - mapLeftX
-    val midXPercent = midX - mapMidX
-    val rightXPercent = rightX - mapRightX
-    
-    // sample the tiles to work out the height of the tile at this position
-    val leftFloorSampleY = leftFloorTile.sampleHeight(leftXPercent)
-    val rightFloorSampleY = rightFloorTile.sampleHeight(rightXPercent)
-    val leftWallSampleY = leftWallTile.sampleHeight(leftXPercent)
-    val rightWallSampleY = rightWallTile.sampleHeight(rightXPercent)
-    val midLowRoadSampleY = lowRoadTile.sampleHeight(midXPercent)
-    val midHighRoadSampleY = highRoadTile.sampleHeight(midXPercent)
-
-    val approachingFloor = leftFloorSampleY >= 0 || rightFloorSampleY >= 0
-    if (approachingFloor) { // then we are soon to land on something
-      val floorHeight = math.max(midLowRoadSampleY + mapFloorY, midHighRoadSampleY + mapWallY)
-
-      // see if we've collided with the either the low-road or the high-road
-      if (position.y <= floorHeight) {
-        verticalVelocity = 0f         // stop falling
-        position.y = floorHeight  // snap to floor
-      }
-    }
-    
-    val atLeftWall = leftWallSampleY >= 0
-    val atRightWall = rightWallSampleY >= 0
-    if (atLeftWall) {
-      val wallHeight = leftWallSampleY + mapWallY
-      // pass into the wall if it is below a threshold, the floor-snapping code will make us treat the wall like a step/slope
-      if (wallHeight - position.y > StepThreshold) {
-        position.x = if (position.x < oldPosition.x) oldPosition.x else position.x
-      }
-    }
-    if (atRightWall) {
-      val wallHeight = rightWallSampleY + mapWallY
-      // pass into the wall if it is below a threshold, the floor-snapping code will make us treat the wall like a step/slope
-      if (wallHeight - position.y > StepThreshold) {
-        position.x = if (position.x > oldPosition.x) oldPosition.x else position.x
-      }
-    }
-
-
+    // must resolve wall collisions first, otherwise we might step up a wall
+    resolveWallCollisions(oldPosition, position)
+    resolveFloorCollisions(oldPosition, position)
   }
   
   def moveRight(value: Boolean) = movingRight = value
   def moveLeft(value: Boolean) = movingLeft = value
-  def jump() = verticalVelocity = if (isGrounded) JumpSpeed else verticalVelocity
+  def jumping(value: Boolean) = isJumping = value
     
-  private def isGrounded = verticalVelocity == 0
+  def resolveWallCollisions(oldPosition: Vector2, newPosition: Vector2) = {
+    val bounds = new MapData(newPosition)
+    import bounds._
+    
+    val closestAllowableDistanceToWall = 0.5f+Width/2
+    
+        val leftY = mapEval2(mapLeftX, mapY, leftXPercent, 1f)
+    val rightY = mapEval2(mapRightX, mapY, 0f, rightXPercent)
+    val midY = mapEval2(mapMidX, mapY, midXPercent, midXPercent)
+    
+    // if there is neither a high-road nor a low-road then it's a cliff - don't fall off cliffs
+    val cliffHanging = midY <= mapFloorY
+    val floorHeight = {
+      if (cliffHanging) { // need to use the left/right corners to set the height, rather than the middle
+        math.min(mapY, math.max(leftY, rightY))
+      }
+      else midY
+    }
+    
+    // sample the tiles
+    val leftWallSampleY = mapEval2(mapLeftX, mapY, leftXPercent, leftXPercent)
+    val rightWallSampleY = mapEval2(mapRightX, mapY, rightXPercent, rightXPercent)
+    val midSampleY =
+      //math.max(
+        mapEval2(mapMidX, mapY, midXPercent, midXPercent)//,
+        //if (isGrounded) mapY+0 else -1)
+
+    val atLeftWall = leftWallSampleY > oldPosition.y
+    val atRightWall = rightWallSampleY > oldPosition.y
+    if (atLeftWall && leftWallSampleY - floorHeight >= StepThreshold) {
+      println(leftWallSampleY + "  " + oldPosition.y +"   " + midSampleY + "  " + mapMidX + "  " + mapY + "  " + midXPercent + "  " + isGrounded)
+      newPosition.x = math.max(mapLeftX+closestAllowableDistanceToWall, newPosition.x)
+    }
+    if (atRightWall) {
+      
+    if (atRightWall && rightWallSampleY - floorHeight >= StepThreshold) {
+      println(rightWallSampleY + "  " + oldPosition.y +"   " + floorHeight + "  " + mapMidX + "  " + mapY + "  " + midXPercent + "  " + isGrounded)
+      newPosition.x = math.min(mapRightX-closestAllowableDistanceToWall, newPosition.x)
+    }
+    }
+  }
+  
+  def resolveFloorCollisions(oldPosition: Vector2, newPosition: Vector2) = {
+    val bounds = new MapData(new Vector2(newPosition.x, oldPosition.y)) // sample he map using the wall-resolved X position and the old Y position (to prevent tunelling)
+    import bounds._
+    
+    val leftY = mapEval2(mapLeftX, mapY, leftXPercent, 1f)
+    val rightY = mapEval2(mapRightX, mapY, 0f, rightXPercent)
+    val midY = mapEval2(mapMidX, mapY, midXPercent, midXPercent)
+    
+    // if there is neither a high-road nor a low-road then it's a cliff - don't fall off cliffs
+    val cliffHanging = midY <= mapFloorY
+    val floorHeight = {
+      if (cliffHanging) { // need to use the left/right corners to set the height, rather than the middle
+        math.min(mapY, math.max(leftY, rightY))
+      }
+      else midY
+    }
+    
+    val wasGrounded = isGrounded
+    isGrounded = false
+
+    val approachingFloor = verticalVelocity <= 0 && floorHeight >= mapFloorY
+    if (approachingFloor) { // then we are soon to land on something
+      // see if we need to snap to the ground
+      val heightOffFloor = newPosition.y - floorHeight
+      if (heightOffFloor <= 0 || (wasGrounded && heightOffFloor < StepThreshold)) {
+        verticalVelocity = 0f        // stop falling
+        newPosition.y = floorHeight  // snap to floor
+        isGrounded = true
+      }
+    }
+  }
 }

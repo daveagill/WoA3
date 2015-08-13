@@ -12,6 +12,25 @@ class TileMap(val tiles: Vector[Vector[Tiles.Tile]]) {
     tiles(y)(x)
   }
   
+  def eval(x: Int, y: Int, minXPercent: Float, maxXPercent: Float): Float = {
+    /*val atTile = getTile(x, y)
+    val belowTile = getTile(x, y-1)
+    val atSample= atTile.sampleHeight(minXPercent, maxXPercent)
+    val belowSample = belowTile.sampleHeight(minXPercent, maxXPercent)
+    if (atSample < 0 && belowSample < 0) { return -1 }
+    math.max(atSample+y, belowSample+y-1)*/
+    
+        var currentY = y
+    while (currentY >= 0) {
+      val tile = getTile(x, currentY)
+      val sample = tile.sampleHeight(minXPercent, maxXPercent)
+      if (sample >= 0) {
+        return currentY + sample
+      }
+      currentY -= 1
+    }
+    -1
+  }
 }
 
 object TileMap {

@@ -26,7 +26,7 @@ class PlayGameState(basicRenderer: BasicRenderer) extends GameState {
       keycode match {
         case Input.Keys.RIGHT => { world.player.moveRight(true) }
         case Input.Keys.LEFT => { world.player.moveLeft(true) }
-        case Input.Keys.UP => { world.player.jump() }
+        case Input.Keys.UP => { world.player.jumping(true) }
         case _ =>
       }
       false
@@ -36,6 +36,7 @@ class PlayGameState(basicRenderer: BasicRenderer) extends GameState {
       keycode match {
         case Input.Keys.RIGHT => { world.player.moveRight(false) }
         case Input.Keys.LEFT => { world.player.moveLeft(false) }
+        case Input.Keys.UP => { world.player.jumping(false) }
         case _ =>
       }
       false

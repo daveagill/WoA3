@@ -22,6 +22,8 @@ class WorldRenderer(renderer: BasicRenderer) {
   val playerTex = renderer.resources.newTexture("block.png")
   
   val blockTex = renderer.resources.newTexture("block.png")
+  val leftSlopeTex = renderer.resources.newTexture("leftSlope.png")
+  val rightSlopeTex = renderer.resources.newTexture("rightSlope.png")
   
   def drawWorld(world: World) = {
     renderer.batch.setTransformMatrix(new Matrix4().scale(WorldScale, WorldScale, WorldScale).translate(TileWidth/2f, 0, 0))
@@ -46,8 +48,8 @@ class WorldRenderer(renderer: BasicRenderer) {
   
   def selectTileTexture(tile: Tiles.Tile) : Option[Texture] = tile match {
     case Tiles.Block => Some(blockTex)
-    case Tiles.LeftSlope => Some(blockTex)
-    case Tiles.RightSlope => Some(blockTex)
+    case Tiles.LeftSlope => Some(leftSlopeTex)
+    case Tiles.RightSlope => Some(rightSlopeTex)
     case Tiles.Empty => None
   }
 }
