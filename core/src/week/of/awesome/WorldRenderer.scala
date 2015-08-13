@@ -46,6 +46,8 @@ class WorldRenderer(renderer: BasicRenderer) {
   
   def selectTileTexture(tile: Tiles.Tile) : Option[Texture] = tile match {
     case Tiles.Block => Some(blockTex)
+    case Tiles.LeftSlope => Some(blockTex)
+    case Tiles.RightSlope => Some(blockTex)
     case Tiles.Empty => None
   }
 }

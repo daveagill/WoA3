@@ -24,7 +24,9 @@ object TileMap {
   
   private def parseTile(t: Char): Tiles.Tile = t match {
     case ' ' => Tiles.Empty
-    case '1' => Tiles.Block
+    case 'x' => Tiles.Block
+    case '/' => Tiles.RightSlope
+    case '\\' => Tiles.LeftSlope
     case _ => throw new RuntimeException("Attempt to parse invalid tile type: " + t)
   }
 }

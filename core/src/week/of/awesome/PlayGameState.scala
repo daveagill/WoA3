@@ -26,6 +26,7 @@ class PlayGameState(basicRenderer: BasicRenderer) extends GameState {
       keycode match {
         case Input.Keys.RIGHT => { world.player.moveRight(true) }
         case Input.Keys.LEFT => { world.player.moveLeft(true) }
+        case Input.Keys.UP => { world.player.jump() }
         case _ =>
       }
       false

@@ -15,4 +15,12 @@ object Tiles {
   case object Block extends Tile {
     def sampleHeight(xPercent: Float) = 1f
   }
+  
+  case object RightSlope extends Tile {
+    def sampleHeight(xPercent: Float) = xPercent
+  }
+  
+  case object LeftSlope extends Tile {
+    def sampleHeight(xPercent: Float) = 1-xPercent
+  }
 }
