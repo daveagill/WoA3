@@ -55,86 +55,55 @@ class Player(
     val oldPosition = position.cpy
     position.add(velocity.scl(dt))
     
-    // must resolve wall collisions first, otherwise we might step up a wall
-    resolveWallCollisions(oldPosition, position)
-    resolveFloorCollisions(oldPosition, position)
+    // work out how the height of the player has changed from old position to new
+    val oldFloorY = projectToFloor(oldPosition, true)
+    val newFloorY = projectToFloor(position, false)
+
+    // resolve wall collision
+    val wallCollision = position.y < newFloorY && math.abs(newFloorY - oldFloorY) > StepThreshold
+    val wallCorrectedFloorY = if (wallCollision) {
+      val wasLeftWall = position.x < oldPosition.x
+      if (wasLeftWall) {
+        position.x = oldPosition.x.intValue+1 - 0.5f + Width/2
+      }
+      else {
+        position.x = oldPosition.x.intValue + 0.5f - Width/2
+      }
+      oldFloorY
+    }
+    else newFloorY
+    
+    // resolve ground collision
+    isGrounded = position.y < wallCorrectedFloorY && verticalVelocity <= 0
+    if (isGrounded) {
+      verticalVelocity = 0f                // stop falling
+      position.y = wallCorrectedFloorY     // snap to floor
+    }
   }
   
   def moveRight(value: Boolean) = movingRight = value
   def moveLeft(value: Boolean) = movingLeft = value
   def jumping(value: Boolean) = isJumping = value
+
+  def projectToFloor(position: Vector2, b:Boolean): Float = {
+    val (leftX, midX, rightX) = (position.x+0.5f-Width/2f, position.x+0.5f, position.x+0.5f+Width/2f)
+    val (mapLeftX, mapMidX, mapRightX) = (leftX.intValue, midX.intValue, if (rightX.isWhole()) rightX.intValue-1 else rightX.intValue())
+    val mapY = (position.y + 0.5f).intValue
     
-  def resolveWallCollisions(oldPosition: Vector2, newPosition: Vector2) = {
-    val bounds = new MapData(newPosition)
-    import bounds._
+    // xPercents for left/mid/right tiles
+    val leftXPercent = leftX - mapLeftX
+    val leftMidXPercent = midX - mapLeftX
+    val midXPercent = midX - mapMidX
+    val rightXPercent = rightX - rightX.intValue
+    val rightMidXPercent = midX - rightX.intValue
     
-    val closestAllowableDistanceToWall = 0.5f+Width/2
-    
-        val leftY = mapEval2(mapLeftX, mapY, leftXPercent, 1f)
-    val rightY = mapEval2(mapRightX, mapY, 0f, rightXPercent)
+    val leftY = mapEval2(mapLeftX, mapY, leftXPercent, leftMidXPercent)
+    val rightY = mapEval2(mapRightX, mapY, rightMidXPercent, rightXPercent)
     val midY = mapEval2(mapMidX, mapY, midXPercent, midXPercent)
     
-    // if there is neither a high-road nor a low-road then it's a cliff - don't fall off cliffs
-    val cliffHanging = midY <= mapFloorY
-    val floorHeight = {
-      if (cliffHanging) { // need to use the left/right corners to set the height, rather than the middle
-        math.min(mapY, math.max(leftY, rightY))
-      }
-      else midY
-    }
+    val maxY = math.max(leftY, rightY)
     
-    // sample the tiles
-    val leftWallSampleY = mapEval2(mapLeftX, mapY, leftXPercent, leftXPercent)
-    val rightWallSampleY = mapEval2(mapRightX, mapY, rightXPercent, rightXPercent)
-    val midSampleY =
-      //math.max(
-        mapEval2(mapMidX, mapY, midXPercent, midXPercent)//,
-        //if (isGrounded) mapY+0 else -1)
-
-    val atLeftWall = leftWallSampleY > oldPosition.y
-    val atRightWall = rightWallSampleY > oldPosition.y
-    if (atLeftWall && leftWallSampleY - floorHeight >= StepThreshold) {
-      println(leftWallSampleY + "  " + oldPosition.y +"   " + midSampleY + "  " + mapMidX + "  " + mapY + "  " + midXPercent + "  " + isGrounded)
-      newPosition.x = math.max(mapLeftX+closestAllowableDistanceToWall, newPosition.x)
-    }
-    if (atRightWall) {
-      
-    if (atRightWall && rightWallSampleY - floorHeight >= StepThreshold) {
-      println(rightWallSampleY + "  " + oldPosition.y +"   " + floorHeight + "  " + mapMidX + "  " + mapY + "  " + midXPercent + "  " + isGrounded)
-      newPosition.x = math.min(mapRightX-closestAllowableDistanceToWall, newPosition.x)
-    }
-    }
-  }
-  
-  def resolveFloorCollisions(oldPosition: Vector2, newPosition: Vector2) = {
-    val bounds = new MapData(new Vector2(newPosition.x, oldPosition.y)) // sample he map using the wall-resolved X position and the old Y position (to prevent tunelling)
-    import bounds._
-    
-    val leftY = mapEval2(mapLeftX, mapY, leftXPercent, 1f)
-    val rightY = mapEval2(mapRightX, mapY, 0f, rightXPercent)
-    val midY = mapEval2(mapMidX, mapY, midXPercent, midXPercent)
-    
-    // if there is neither a high-road nor a low-road then it's a cliff - don't fall off cliffs
-    val cliffHanging = midY <= mapFloorY
-    val floorHeight = {
-      if (cliffHanging) { // need to use the left/right corners to set the height, rather than the middle
-        math.min(mapY, math.max(leftY, rightY))
-      }
-      else midY
-    }
-    
-    val wasGrounded = isGrounded
-    isGrounded = false
-
-    val approachingFloor = verticalVelocity <= 0 && floorHeight >= mapFloorY
-    if (approachingFloor) { // then we are soon to land on something
-      // see if we need to snap to the ground
-      val heightOffFloor = newPosition.y - floorHeight
-      if (heightOffFloor <= 0 || (wasGrounded && heightOffFloor < StepThreshold)) {
-        verticalVelocity = 0f        // stop falling
-        newPosition.y = floorHeight  // snap to floor
-        isGrounded = true
-      }
-    }
+    val cliffHanging = maxY - midY > StepThreshold
+    if (cliffHanging) maxY.intValue else midY
   }
 }

@@ -20,7 +20,7 @@ class TileMap(val tiles: Vector[Vector[Tiles.Tile]]) {
     if (atSample < 0 && belowSample < 0) { return -1 }
     math.max(atSample+y, belowSample+y-1)*/
     
-        var currentY = y
+    var currentY = y
     while (currentY >= 0) {
       val tile = getTile(x, currentY)
       val sample = tile.sampleHeight(minXPercent, maxXPercent)
