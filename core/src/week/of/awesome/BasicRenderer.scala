@@ -35,7 +35,7 @@ class BasicRenderer(val resources: GraphicsResources) extends Disposable {
   
   def drawCenteredAtBase(t: Texture, pos: Vector2, width: Float, height: Float, flipX: Boolean) = {
     val actualWidth = if (flipX) -width else width
-    batch.draw(t, pos.x - actualWidth/2f, pos.y, actualWidth, height)
+    batch.draw(t, pos.x - actualWidth/2, pos.y, actualWidth, height)
   }
   
   def dispose() = {

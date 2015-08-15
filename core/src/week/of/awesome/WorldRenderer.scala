@@ -26,7 +26,7 @@ class WorldRenderer(renderer: BasicRenderer) {
   val rightSlopeTex = renderer.resources.newTexture("rightSlope.png")
   
   def drawWorld(world: World) = {
-    renderer.batch.setTransformMatrix(new Matrix4().scale(WorldScale, WorldScale, WorldScale).translate(TileWidth/2f, 0, 0))
+    renderer.batch.setTransformMatrix(new Matrix4().scale(WorldScale, WorldScale, WorldScale))
     
     // draw the map
     for ((row, y) <- world.tilemap.tiles.zipWithIndex) {

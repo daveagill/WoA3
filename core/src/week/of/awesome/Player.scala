@@ -28,17 +28,6 @@ class Player(
   private var verticalVelocity = 0f
   private var isGrounded = false
   
-  class MapData(position: Vector2) {
-    val (leftX, midX, rightX) = (position.x+0.5f-Width/2f, position.x+0.5f, position.x+0.5f+Width/2f)
-    val (mapLeftX, mapMidX, mapRightX) = (leftX.intValue, midX.intValue, if (rightX.isWhole()) rightX.intValue-1 else rightX.intValue())
-    val (mapFloorY, mapY) = ((position.y-0.5f).intValue, (position.y+0.5f).intValue)
-    
-    // xPercents for left/mid/right tiles
-    val leftXPercent = leftX - mapLeftX
-    val midXPercent = midX - mapMidX
-    val rightXPercent = rightX - rightX.intValue
-  }
-  
   def update(dt: Float) = {
     // apply gravity
     verticalVelocity -= (Gravity * dt)
@@ -64,21 +53,23 @@ class Player(
     val wallCorrectedFloorY = if (wallCollision) {
       val wasLeftWall = position.x < oldPosition.x
       if (wasLeftWall) {
-        position.x = oldPosition.x.intValue+1 - 0.5f + Width/2
+        position.x = position.x.intValue - (0.5f+Width/2)
       }
       else {
-        position.x = oldPosition.x.intValue + 0.5f - Width/2
+        position.x = position.x.intValue + (0.5f+Width/2)
       }
       oldFloorY
     }
     else newFloorY
     
     // resolve ground collision
-    isGrounded = position.y < wallCorrectedFloorY && verticalVelocity <= 0
+    isGrounded = position.y <= wallCorrectedFloorY && verticalVelocity <= 0
     if (isGrounded) {
       verticalVelocity = 0f                // stop falling
       position.y = wallCorrectedFloorY     // snap to floor
     }
+    
+    println(oldPosition.x)
   }
   
   def moveRight(value: Boolean) = movingRight = value
@@ -86,7 +77,7 @@ class Player(
   def jumping(value: Boolean) = isJumping = value
 
   def projectToFloor(position: Vector2, b:Boolean): Float = {
-    val (leftX, midX, rightX) = (position.x+0.5f-Width/2f, position.x+0.5f, position.x+0.5f+Width/2f)
+    val (leftX, midX, rightX) = (position.x+(0.5f-Width/2f), position.x+0.5f, position.x+(0.5f+Width/2f))
     val (mapLeftX, mapMidX, mapRightX) = (leftX.intValue, midX.intValue, if (rightX.isWhole()) rightX.intValue-1 else rightX.intValue())
     val mapY = (position.y + 0.5f).intValue
     
@@ -96,6 +87,8 @@ class Player(
     val midXPercent = midX - mapMidX
     val rightXPercent = rightX - rightX.intValue
     val rightMidXPercent = midX - rightX.intValue
+    
+    println(leftX + "  " + mapLeftX)
     
     val leftY = mapEval2(mapLeftX, mapY, leftXPercent, leftMidXPercent)
     val rightY = mapEval2(mapRightX, mapY, rightMidXPercent, rightXPercent)
